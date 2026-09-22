@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shopping List</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5" style="max-width: 600px;">
+  <h2 class="mb-4 text-center">Shopping List</h2>
+
+  <!-- Input Form -->
+  <form id="add-form" class="row g-2 mb-4">
+    <div class="col-7">
+      <input type="text" id="item-name" class="form-control" placeholder="Item name" required>
+    </div>
+    <div class="col-3">
+      <input type="number" id="item-quantity" class="form-control" value="1" min="1" required>
+    </div>
+    <div class="col-2">
+      <button type="submit" class="btn btn-primary w-100">Add</button>
+    </div>
+  </form>
+
+  <div id="error" class="alert alert-danger d-none" role="alert"></div>
+
+  <!-- List -->
+  <ul id="item-list" class="list-group">
+    <li class="list-group-item text-center text-muted" id="empty-state">Loading&hellip;</li>
+  </ul>
+</div>
+
+<script>
+  const API_URL = '/api/items';
+  const list = document.getElementById('item-list');
+  const form = document.getElementById('add-form');
+  const nameInput = document.getElementById('item-name');
+  const quantityInput = document.getElementById('item-quantity');
+  const errorBox = document.getElementById('error');
+
+  function showError(message) {
+    errorBox.textContent = message;
+    errorBox.classList.remove('d-none');
+  }
+
+  function hideError() {
+    errorBox.classList.add('d-none');
+  }
+
+  function renderItems(items) {
+    list.innerHTML = '';
+
+    if (items.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'list-group-item text-center text-muted';
+      empty.textContent = 'No items yet. Add one above.';
+      list.appendChild(empty);
+      return;
+    }
+
+    for (const item of items) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+      const left = document.createElement('div');
+
+      const toggleLink = document.createElement('a');
+      toggleLink.href = '#';
+      toggleLink.className = 'text-decoration-none';
+      toggleLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleItem(item.id);
+      });
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = item.completed
+        ? 'text-decoration-line-through text-muted'
+        : 'fw-bold text-dark';
+      nameSpan.textContent = item.name;
+      toggleLink.appendChild(nameSpan);
+      left.appendChild(toggleLink);
+
+      const qtyBadge = document.createElement('span');
+      qtyBadge.className = 'badge bg-secondary rounded-pill ms-2';
+      qtyBadge.textContent = 'x' + item.quantity;
+      left.appendChild(qtyBadge);
+
+      li.appendChild(left);
+
+      const deleteBtn = document.createElement('a');
+      deleteBtn.href = '#';
+      deleteBtn.className = 'btn btn-sm btn-outline-danger';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        deleteItem(item.id);
+      });
+      li.appendChild(deleteBtn);
+
+      list.appendChild(li);
+    }
+  }
+
+  async function loadItems() {
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error('Failed to load items');
+      const items = await res.json();
+      hideError();
+      renderItems(items);
+    } catch (err) {
+      showError('Could not load the shopping list. Please try again.');
+    }
+  }
+
+  async function toggleItem(id) {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: 'PATCH' });
+      if (!res.ok) throw new Error('Failed to update item');
+      hideError();
+      await loadItems();
+    } catch (err) {
+      showError('Could not update the item. Please try again.');
+    }
+  }
+
+  async function deleteItem(id) {
+    try {
+      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete item');
+      hideError();
+      await loadItems();
+    } catch (err) {
+      showError('Could not delete the item. Please try again.');
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    const quantity = Number(quantityInput.value) || 1;
+    if (!name) return;
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, quantity }),
+      });
+      if (!res.ok) throw new Error('Failed to add item');
+      nameInput.value = '';
+      quantityInput.value = '1';
+      hideError();
+      await loadItems();
+    } catch (err) {
+      showError('Could not add the item. Please try again.');
+    }
+  });
+
+  loadItems();
+</script>
+</body>
+</html>
