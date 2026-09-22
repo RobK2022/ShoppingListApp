@@ -30,7 +30,10 @@ jobs:
           tags: leetmofo/shopping-list-app:${{ github.sha }},leetmofo/shopping-list-app:latest
 
       - name: Deploy to Azure Web App
-        if: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' }}
+        # Set secret as an environment variable to evaluate it safely in conditional step
+        env:
+          AZURE_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        if: ${{ env.AZURE_PROFILE != '' }}
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'shoppinglistappdocker-fpgdh8czbehfffge'
